@@ -25,15 +25,28 @@ Set-Location $directoryName
 # Create package.json file
 Write-Host "[*] Creating file => package.json"
 Invoke-Expression -Command "npm init -y" | Out-Null
+
+# Edit package.json scripts  
+$packageJson = Get-Content -Raw -Path "./package.json" | ConvertFrom-Json
+$packageJson.scripts = @{
+    "test"     = "echo `"Error: no test specified`" && exit 1"
+    "start"    = "nodemon --exec ts-node index.ts"
+    "migrate"  = "knex migrate:latest"
+    "rollback" = "knex migrate:rollback"
+    "seed"     = "knex seed:run"
+}
+$updatedJson = $packageJson | ConvertTo-Json -Depth 4
+$updatedJson | Set-Content -Path "./package.json"
+
 Write-Host "[+] File (package.json) Created Successfully.`n"
 
 # Install packages
 Write-Host "[*] Installing npm Packages"
 if ($templateExtension -eq "ts") {
-    Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid typescript ts-node @types/express" | Out-Null
+    Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid nodemailer @types/nodemailer typescript ts-node @types/express" | Out-Null
 }
 else {
-    Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid" | Out-Null
+    Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid nodemailer" | Out-Null
 }
 Write-Host "[+] npm Packages Successfully Installed.`n"
 
@@ -47,15 +60,79 @@ Set-Location "./configs"
 
 Write-Host "[*] Creating file => configs/db.$templateExtension"
 New-Item -ItemType File -Name "db.$templateExtension" -Path "./" | Out-Null
-Write-Host "[+] File (configs/db.$templateExtension) Created Successfully.`n"
 
+# Create Knex configuration
+@'
+require('dotenv').config();
+
+/**
+ * @type { Object.<string, import("knex").Knex.Config> }
+ */
+module.exports = {
+  client: "mysql",
+  connection: {
+    host: process.env.DB_HOST,
+    database: process.env.DB_LOCAL_DBNAME,
+    user: process.env.DB_LOCAL_USER,
+    password: process.env.DB_LOCAL_PASSWORD,
+  },
+};
+'@ | Out-File -FilePath "./db.$templateExtension"
+
+Write-Host "[+] File (configs/db.$templateExtension) Created Successfully.`n"
 Write-Host "[*] Creating file => configs/mail.$templateExtension"
 New-Item -ItemType File -Name "mail.$templateExtension" -Path "./" | Out-Null
+
+# Create nodemailer configuration
+@'
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+async function configureTransporter() {
+  try {
+    // Create a transporter using SMTP
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USERNAME,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    });
+
+    return transporter;
+  } catch (error) {
+    console.error('Error configuring Nodemailer transporter:', error);
+    throw error;
+  }
+}
+'@ | Out-File -FilePath "./mail.$templateExtension"
+
 Write-Host "[+] File (configs/mail.$templateExtension) Created Successfully.`n"
 
-Write-Host "[*] Creating file => configs/tsconfig.json"
-New-Item -ItemType File -Name "tsconfig.json" -Path "./" | Out-Null
-Write-Host "[+] File (configs/tsconfig.json) Created Successfully.`n"
+if ($templateExtension -eq "ts") {
+    Write-Host "[*] Creating file => configs/tsconfig.json"
+    New-Item -ItemType File -Name "tsconfig.json" -Path "./" | Out-Null
+    
+    # Create tsconfig configuration
+    @'
+{
+    "compilerOptions": {
+      "target": "es2020",
+      "module": "commonjs",
+      "outDir": "../dist",
+      "strict": true,
+      "esModuleInterop": true
+    },
+    "include": ["*.ts"]
+}
+      
+'@ | Out-File -FilePath "./tsconfig.json"
+    
+    Write-Host "[+] File (configs/tsconfig.json) Created Successfully.`n"
+}
+
 
 Set-Location ".."
 

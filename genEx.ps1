@@ -31,3 +31,16 @@ Invoke-Expression -Command "git init" | Out-Null
 New-Item -ItemType File -Name ".gitignore" -Path "./" | Out-Null
 
 Write-Host "[+] Git Initialized Successfully.`n"
+
+
+
+
+
+
+
+# create README file
+Write-Host "[*] Creating file => README.md"
+
+New-Item -ItemType File -Name "README.md" -Path "./" | Out-Null
+
+Write-Host "[+] File (README.md) Created Successfully.`n"

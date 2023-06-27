@@ -6,6 +6,7 @@ param (
     [Alias("t", "temp", "template")]
     [ValidateSet("ts", "js")]
     [string]$templateExtension = "js"
+    
 )
 
 # Create the directory if it doesn't exist
@@ -26,21 +27,35 @@ Write-Host "[*] Creating file => package.json"
 Invoke-Expression -Command "npm init -y" | Out-Null
 Write-Host "[+] File (package.json) Created Successfully.`n"
 
+# Install packages
+Write-Host "[*] Installing npm Packages"
+if ($templateExtension -eq "ts") {
+    Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid typescript ts-node @types/express" | Out-Null
+}
+else {
+    Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid" | Out-Null
+}
+Write-Host "[+] npm Packages Successfully Installed.`n"
+
 # Create configs directory
 Write-Host "[*] Creating directory => configs"
 New-Item -ItemType Directory -Name "configs" -Path "./" | Out-Null
 Write-Host "[+] Directory (configs) Created Successfully.`n"
 
-# Place files for configs directory
+# Place file(s) for configs directory
 Set-Location "./configs"
 
-Write-Host "[*] Creating file => db.$templateExtension"
+Write-Host "[*] Creating file => configs/db.$templateExtension"
 New-Item -ItemType File -Name "db.$templateExtension" -Path "./" | Out-Null
-Write-Host "[+] File (db.$templateExtension) Created Successfully.`n"
+Write-Host "[+] File (configs/db.$templateExtension) Created Successfully.`n"
 
-Write-Host "[*] Creating file => mail.$templateExtension"
+Write-Host "[*] Creating file => configs/mail.$templateExtension"
 New-Item -ItemType File -Name "mail.$templateExtension" -Path "./" | Out-Null
-Write-Host "[+] File (mail.$templateExtension) Created Successfully.`n"
+Write-Host "[+] File (configs/mail.$templateExtension) Created Successfully.`n"
+
+Write-Host "[*] Creating file => configs/tsconfig.json"
+New-Item -ItemType File -Name "tsconfig.json" -Path "./" | Out-Null
+Write-Host "[+] File (configs/tsconfig.json) Created Successfully.`n"
 
 Set-Location ".."
 

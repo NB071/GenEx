@@ -1,7 +1,11 @@
 param (
     [Parameter(Mandatory = $true, Position = 0)]
     [Alias("d", "dir", "directory")]
-    [string]$directoryName
+    [string]$directoryName,
+    [Parameter(Mandatory = $false, Position = 1)]
+    [Alias("t", "temp", "template")]
+    [ValidateSet("ts", "js")]
+    [string]$templateExtension = "js"
 )
 
 # Create the directory if it doesn't exist
@@ -37,6 +41,12 @@ Write-Host "[+] Git Initialized Successfully.`n"
 
 
 
+# Create Index.js/ts
+Write-Host "[*] Creating file => index.$templateExtension"
+
+New-Item -ItemType File -Name "index.$templateExtension" -Path "./" | Out-Null
+
+Write-Host "[+] File (index.$templateExtension) Created Successfully.`n"
 
 # create README file
 Write-Host "[*] Creating file => README.md"

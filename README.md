@@ -36,7 +36,7 @@ A well-thought-out folder structure that caters to the unique needs of ExpressJS
 *   ts-node (if selected TypeScript)
 
 <h2>💡 Save Time, Boost Quality:</h2>
-By eliminating the repetitive and time-consuming task of manually setting up project structures, ExpressJS Project Structurer empowers you to dedicate your valuable time to enhancing the quality of your projects. Invest your efforts where they truly count and unlock the full potential of your applications.
+By eliminating the repetitive and time-consuming task of manually setting up project structures, genEx empowers you to dedicate your valuable time to enhancing the quality of your projects. Invest your efforts where they truly count and unlock the full potential of your applications.
 
 <h2>🌟 Key Features:</h2>
 

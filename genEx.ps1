@@ -28,13 +28,26 @@ Invoke-Expression -Command "npm init -y" | Out-Null
 
 # Edit package.json scripts  
 $packageJson = Get-Content -Raw -Path "./package.json" | ConvertFrom-Json
-$packageJson.scripts = @{
-  "test"     = "echo `"Error: no test specified`" && exit 1"
-  "start"    = "nodemon --exec ts-node index.ts"
-  "migrate"  = "knex migrate:latest"
-  "rollback" = "knex migrate:rollback"
-  "seed"     = "knex seed:run"
+
+if ($templateExtension -eq "ts") {
+  $packageJson.scripts = @{
+    "test"     = "echo `"Error: no test specified`" && exit 1"
+    "start"    = "nodemon --exec ts-node index.$templateExtension"
+    "migrate"  = "knex migrate:latest --knexfile ./configs/db.$templateExtension"
+    "rollback" = "knex migrate:rollback --knexfile ./configs/db.$templateExtension"
+    "seed"     = "knex seed:run --knexfile ./configs/db.$templateExtension"
+  }
 }
+else {
+  $packageJson.scripts = @{
+    "test"     = "echo `"Error: no test specified`" && exit 1"
+    "start"    = "nodemon index.$templateExtension"
+    "migrate"  = "knex migrate:latest --knexfile ./configs/db.$templateExtension"
+    "rollback" = "knex migrate:rollback --knexfile ./configs/db.$templateExtension"
+    "seed"     = "knex seed:run --knexfile ./configs/db.$templateExtension"
+  }    
+}
+
 $updatedJson = $packageJson | ConvertTo-Json -Depth 4
 $updatedJson | Set-Content -Path "./package.json"
 
@@ -44,7 +57,7 @@ Write-Host "[+] File (package.json) Created Successfully.`n"
 Write-Host "[*] Installing npm Packages"
 if ($templateExtension -eq "ts") {
   Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid nodemailer typescript ts-node" | Out-Null
-  Invoke-Expression -Command "npm i -D @types/node-cron @types/nodemailer @types/express @types/node @types/jsonwebtoken @types/multer" | Out-Null
+  Invoke-Expression -Command "npm i -D @types/node-cron @types/nodemailer @types/express @types/cors @types/node @types/jsonwebtoken @types/multer" | Out-Null
 }
 else {
   Invoke-Expression -Command "npm i axios bcrypt cors dotenv express jsonwebtoken knex mysql multer node-cron nodemon uuid nodemailer" | Out-Null
@@ -66,13 +79,11 @@ New-Item -ItemType File -Name "db.$templateExtension" -Path "./" | Out-Null
 if ($templateExtension -eq "ts") {
   @'
 import type { Knex } from "knex";
-import * as dotenv from "dotenv";
-import { join } from "path";
 
-// Configure .env file
-dotenv.config();
+require("dotenv").config();
+const path = require("node:path");
 
-export default {
+module.exports = {
   client: "mysql",
   connection: {
     host: process.env.DB_HOST,
@@ -81,27 +92,24 @@ export default {
     password: process.env.DB_LOCAL_PASSWORD,
   },
   seeds: {
-    directory: join("..", "models", "seeds"),
+    directory: path.join("..", "models", "seeds"),
   },
   migrations: {
-    directory: join("..", "models", "migrations"),
+    directory: path.join("..", "models", "migrations"),
   },
-} as { [key: string]: Knex.Config };
+} as { [key: string]: Knex.Config };  
 '@ | Set-Content -Path "./db.$templateExtension"
 }
 else {
   @'
-import * as dotenv from "dotenv";
-import { join } from "path";
-
-// Configure .env file
-dotenv.config();
+require("dotenv").config();
+const path = require("node:path");
 
 /**
  * @type { Object.<string, import("knex").Knex.Config> }
  */
 
-export default {
+module.exports = {
   client: "mysql",
   connection: {
     host: process.env.DB_HOST,
@@ -110,12 +118,12 @@ export default {
     password: process.env.DB_LOCAL_PASSWORD,
   },
   seeds: {
-    directory: join(__dirname, "models", "seeds"),
+    directory: path.join("..", "models", "seeds"),
   },
   migrations: {
-    directory: join(__dirname, "models", "migrations"),
+    directory: path.join("..", "models", "migrations"),
   },
-};
+};  
 '@ | Set-Content -Path "./db.$templateExtension"
 }
 
@@ -125,11 +133,9 @@ New-Item -ItemType File -Name "mail.$templateExtension" -Path "./" | Out-Null
 
 # content
 @'
-import * as nodemailer from "nodemailer";
-import * as dotenv from "dotenv";
+require("dotenv").config();
 
-// Configure .env file
-dotenv.config();
+const nodemailer = require("nodemailer");
 
 // Example nodemailer configuration
 async function configureTransporter() {
@@ -138,7 +144,7 @@ async function configureTransporter() {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === 'true',
+      secure: process.env.SMTP_SECURE === "true",
       auth: {
         user: process.env.SMTP_USERNAME,
         pass: process.env.SMTP_PASSWORD,
@@ -147,12 +153,12 @@ async function configureTransporter() {
 
     return transporter;
   } catch (error) {
-    console.error('Error configuring Nodemailer transporter:', error);
+    console.error("Error configuring Nodemailer transporter:", error);
     throw error;
   }
 }
 
-export { configureTransporter }
+module.exports = { configureTransporter };
 '@ | Set-Content -Path "./mail.$templateExtension"
 
 Write-Host "[+] File (configs/mail.$templateExtension) Created Successfully.`n"
@@ -202,7 +208,9 @@ New-Item -ItemType File -Name "index.$templateExtension" -Path "./" | Out-Null
 if ($templateExtension -eq "ts") {
   @'
 import type { Request, Response, RequestHandler } from 'express';
-import * as query from "../../models/queries"
+
+// import queries
+const query = require("../../models/queries");
 
 // Your controller functions go here...
 const sample: RequestHandler = async (req: Request, res: Response) => {
@@ -211,20 +219,25 @@ const sample: RequestHandler = async (req: Request, res: Response) => {
 }
 
 module.exports = {
-    sample
-};    
+  sample,
+};
+ 
 '@ | Set-Content -Path "./index.$templateExtension"
 }
 else {
   @'
 // import queries
-import * as query from "../../models/queries"
+const query = require("../../models/queries");
 
 // Your controller functions go here...
-module.exports.sample = async (req, res) => {
-  query.fetchUsernames() // sample fake query
+const sample = async (req, res) => {
+  query.fetchUsernames(); // sample fake query
   res.json({ success: "Sample response" });
-}
+};
+
+module.exports = {
+  sample,
+};      
 '@ | Set-Content -Path "./index.$templateExtension"
 }
 
@@ -246,42 +259,46 @@ New-Item -ItemType File -Name "index.$templateExtension" -Path "./" | Out-Null
 # contents
 if ($templateExtension -eq "ts") {
   @'
-import type { Request, Response, RequestHandler } from 'express';
-import * as query from "../../models/queries"
-import * as jwtUtils from "../../utils/jwt"
+import type { Request, Response, RequestHandler } from "express";
+
+// import queries
+const query = require("../../models/queries");
+const jwtUtils = require("../../utils/jwt");
 
 // Your controller functions go here...
 const sampleLogin: RequestHandler = async (req: Request, res: Response) => {
   try {
-    query.login() // sample fake query
-    const token = jwtUtils.generateAccessToken('user1')
+    query.login(); // sample fake query
+    const token = jwtUtils.generateAccessToken("user1");
     res.json({ token });
   } catch (error) {
     return res.status(500).json({ error });
   }
-} 
+};
 
 module.exports = {
-  sampleLogin
-};    
+  sampleLogin,
+};  
 '@ | Set-Content -Path "./index.$templateExtension"
 }
 else {
   @'
 // import queries
-import * as query from "../models/queries"
-import * as jwtUtils from "../../utils/jwt"
+const query = require("../../models/queries");
+const jwtUtils = require("../../utils/jwt");
 
 // Your controller functions go here...
-module.exports.sample = async (req, res) => {
+const sampleLogin = async (req, res) => {
   try {
-    query.login() // sample fake query
-    const token = jwtUtils.generateAccessToken('user1')
+    query.login(); // sample fake query
+    const token = jwtUtils.generateAccessToken("user1");
     res.json({ token });
   } catch (error) {
     return res.status(500).json({ error });
   }
-}
+};
+
+module.exports = { sampleLogin };
 '@ | Set-Content -Path "./index.$templateExtension"
 }
 
@@ -296,9 +313,89 @@ Write-Host "[+] Directory (middlewares) Created Successfully.`n"
 
 # Place file(s) for middlewares directory
 Set-Location "./middlewares"
-Write-Host "[*] Creating file => auth.$templateExtension"
+Write-Host "[*] Creating file => middlewares/auth.$templateExtension"
 New-Item -ItemType File -Name "auth.$templateExtension" -Path "./" | Out-Null
-Write-Host "[+] File (auth.$templateExtension) Created Successfully.`n"
+
+# contents
+if ($templateExtension -eq "ts") {
+  @'
+import type { Request, Response, NextFunction, RequestHandler } from "express";
+
+const jwtUtils = require("../utils/jwt");
+
+const authMiddleware: RequestHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  const isAuthenticated = jwtUtils.verifyAccessToken(token.split(" ")[1]);
+  if (isAuthenticated) {
+    next();
+  } else {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+module.exports = { authMiddleware };  
+'@ | Set-Content -Path "./auth.$templateExtension"
+}
+else {
+  @'
+const jwtUtils = require("../utils/jwt");
+
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  const isAuthenticated = jwtUtils.verifyAccessToken(token.split(" ")[1]);
+  if (isAuthenticated) {
+    next();
+  } else {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+}
+module.exports = { authMiddleware };  
+'@ | Set-Content -Path "./auth.$templateExtension"
+}
+
+Write-Host "[+] File (middlewares/auth.$templateExtension) Created Successfully.`n"
+
+Write-Host "[*] Creating file => middlewares/multer.$templateExtension"
+New-Item -ItemType File -Name "multer.$templateExtension" -Path "./" | Out-Null
+
+# contents
+@'
+const multer = require("multer");
+const path = require("node:path");
+
+// multer storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // code
+  },
+  filename: (req, file, cb) => {
+    // code
+  },
+});
+
+// multer middleware
+const sampleMulterMiddleware = multer({
+  storage: storage,
+  limits: { fileSize: 100000000 },
+});
+
+module.exports = {
+  sampleMulterMiddleware,
+};
+'@ | Set-Content -Path "./multer.$templateExtension"
+
+
+Write-Host "[+] File (middlewares/multer.$templateExtension) Created Successfully.`n"
 
 Set-Location ".."
 
@@ -313,11 +410,16 @@ Set-Location "./models"
 # Place models/migration sub-directory
 Write-Host "[*] Creating directory + sample => models/migrations"
 New-Item -ItemType Directory -Name "migrations" -Path "./" | Out-Null
-Write-Host "[+] directory (models/migrations) Created Successfully.`n"
+Write-Host "[+] directory + sample (models/migrations) Created Successfully.`n"
 
 # Create a knex migration file sample
 Set-Location "./migrations"
-Invoke-Expression -Command "knex migrate:make test --knexfile ../../configs/db.ts -x ts" | Out-Null
+if ($templateExtension -eq "ts") {
+  Invoke-Expression -Command "knex migrate:make test --knexfile ../../configs/db.$templateExtension -x ts" | Out-Null
+}
+else {
+  Invoke-Expression -Command "knex migrate:make test --knexfile ../../configs/db.$templateExtension" | Out-Null
+}
 Set-Location ".."
 
 # Place models/seeds sub-directory
@@ -326,10 +428,16 @@ New-Item -ItemType Directory -Name "seeds" -Path "./" | Out-Null
 
 # Create a knex migration file sample
 Set-Location "./seeds"
-Invoke-Expression -Command "knex seed:make test --knexfile ../../configs/db.ts -x ts" | Out-Null
+if ($templateExtension -eq "ts") {
+  Invoke-Expression -Command "knex seed:make test --knexfile ../../configs/db.$templateExtension -x ts" | Out-Null
+}
+else {
+  Invoke-Expression -Command "knex seed:make test --knexfile ../../configs/db.$templateExtension" | Out-Null
+}
+
 Set-Location ".."
 
-Write-Host "[+] directory (models/seeds) Created Successfully.`n"
+Write-Host "[+] directory + sample (models/seeds) Created Successfully.`n"
 
 # Place models/queries sub-directory
 Write-Host "[*] Creating directory => models/queries"
@@ -345,45 +453,45 @@ New-Item -ItemType File -Name "index.$templateExtension" -Path "./" | Out-Null
 if ($templateExtension -eq "ts") {
   @'
 // knex configuration
-import knexConfig from "../../configs/db";
-import { knex } from "knex";
+const knexConfig = require("../../configs/db");
+const { knex } = require("knex");
 const db = knex(knexConfig);
 
 // Your query functions go here...
-
 // Ex: Query all usernames
 function fetchUsernames(): object {
   return {};
 }
+
 // Ex: Query for login
 function login(): object {
   // process
   return {};
 }
 
-export { fetchUsernames, login };
+module.exports = { fetchUsernames, login };
 '@ | Set-Content -Path "./index.$templateExtension"
 }
 else {
   @'
 // knex configuration
-import knexConfig from "../../configs/db";
-import { knex } from "knex";
+const knexConfig = require("../../configs/db");
+const { knex } = require("knex");
 const db = knex(knexConfig);
 
 // Your query functions go here...
-
 // Ex: Query all usernames
-function fetchUsernames(){
+function fetchUsernames() {
   return {};
 }
 
 // Ex: Query for login
-function login(): object {
+function login() {
   // process
   return {};
 }
-export { fetchUsernames, login };
+
+module.exports = { fetchUsernames, login };
 '@ | Set-Content -Path "./index.$templateExtension"
 }
 
@@ -408,22 +516,20 @@ Write-Host "[*] Creating file => routes/api/index.$templateExtension"
 New-Item -ItemType File -Name "index.$templateExtension" -Path "./" | Out-Null
 
 # contents
-if ($templateExtension -eq "ts") {
-  @'
-import {Router} from "express"
-import * as multer from "multer"
-import * as apiRoute from "../../controllers/api"
+@'
+const router = require("express").Router();
 
-'@ | Set-Content -Path "./index.$templateExtension"
-}
-else {
-  @'
-import {Router} from "express"
-import * as multer from "multer"
-import * as apiRoute from "../../controllers/api"
+// controller
+const apiController = require("../../controllers/api")
 
+// Middlewares - if needed
+// const MulterMiddleware = require("../../middlewares/multer")
+
+// Your api routes go here... 
+router.get("/example", apiController.sample);
+
+module.exports = router;
 '@ | Set-Content -Path "./index.$templateExtension"
-}
 
 Write-Host "[+] File (routes/api/index.$templateExtension) Created Successfully.`n"
 
@@ -440,20 +546,21 @@ Write-Host "[*] Creating file => routes/auth/index.$templateExtension"
 New-Item -ItemType File -Name "index.$templateExtension" -Path "./" | Out-Null
 
 # contents
-if ($templateExtension -eq "ts") {
-  @'
-import {Router} from "express"
-import * as authRoute from "../../controllers/auth"
+@'
+const router = require("express").Router();
 
-'@ | Set-Content -Path "./index.$templateExtension"
-}
-else {
-  @'
-import {Router} from "express"
-import * as authRoute from "../../controllers/auth"
+// controller
+const authController = require("../../controllers/auth")
 
+// Middlewares - if needed
+// const MulterMiddleware = require("../../middlewares/multer")
+
+// Your auth routes go here... 
+router.post("/login", authController.sampleLogin);
+
+module.exports = router;
 '@ | Set-Content -Path "./index.$templateExtension"
-}
+
 
 Write-Host "[+] File (routes/api/index.$templateExtension) Created Successfully.`n"
 
@@ -471,16 +578,16 @@ New-Item -ItemType File -Name "cron.$templateExtension" -Path "./" | Out-Null
 
 # contents
 @'
-import * as cron from "node-cron"
+const cron = require("node-cron");
 
 // Your cron functions go here...
 cron.schedule("0 0 * * 0", async () => {
-    try {
-      console.log("Task 1 Completed")
-    } catch (error) {
-      console.error("Task 1 failed:", error);
-    }
-  });
+  try {
+    console.log("Task 1 Completed");
+  } catch (error) {
+    console.error("Task 1 failed:", error);
+  }
+});
 '@ | Set-Content -Path "./cron.$templateExtension"
 
 Write-Host "[+] File (cron.$templateExtension) Created Successfully.`n"
@@ -491,11 +598,8 @@ New-Item -ItemType File -Name "jwt.$templateExtension" -Path "./" | Out-Null
 # contents
 if ($templateExtension -eq "ts") {
   @'
-import * as jwt from "jsonwebtoken";
-import * as dotenv from "dotenv";
-
-// Configure .env file
-dotenv.config();
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 // Your jwt functions go here...
 // Customize the payload according to your application
@@ -505,7 +609,7 @@ const generateAccessToken = (username: string): string | boolean => {
   if (!username || !process.env.JWT_SIGN_KEY) {
     return false; // username or secret key is undefined or empty
   }
-  return jwt.sign(username, process.env.JWT_SIGN_KEY, { expiresIn: "24h" });
+  return jwt.sign({ username }, process.env.JWT_SIGN_KEY, { expiresIn: "24h" });
 };
 
 // Verify token
@@ -521,7 +625,7 @@ const verifyAccessToken = (token: string): boolean => {
   }
 };
 
-export {
+module.exports = {
   generateAccessToken,
   verifyAccessToken,
 };
@@ -529,28 +633,30 @@ export {
 }
 else {
   @'
-import * as jwt from "jsonwebtoken";
-import * as dotenv from "dotenv";
-
-// Configure .env file
-dotenv.config();
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
   
 // Your jwt functions go here...
 // Customize the payload according to your application
 
 // Generate token
-module.exports.generateAccessToken = (username) => {
-  return jwt.sign(username, process.env.JWT_SIGN_KEY, { expiresIn: "24h" });
+const generateAccessToken = (username) => {
+  return jwt.sign({ username }, process.env.JWT_SIGN_KEY, { expiresIn: "24h" });
 };
 
 // Verify token
-module.exports.verifyAccessToken = (token) => {
+const verifyAccessToken = (token) => {
   try {
     jwt.verify(token, process.env.JWT_SIGN_KEY);
     return true;
   } catch (error) {
     return false;
   }
+};
+
+module.exports = {
+  generateAccessToken,
+  verifyAccessToken,
 };
 '@ | Set-Content -Path "./jwt.$templateExtension"
 }
@@ -583,14 +689,96 @@ Set-Location ".."
 # Create Index.js/ts
 Write-Host "[*] Creating file => index.$templateExtension"
 New-Item -ItemType File -Name "index.$templateExtension" -Path "./" | Out-Null
+
+# contents
+if ($templateExtension -eq "ts") {
+  @'
+import { Application } from "express";
+
+require("dotenv").config();
+
+const express = require("express");
+const cors = require("cors");
+const path = require("node:path");
+
+
+// routes - import
+const apiRoute = require("./routes/api");
+const authRoute = require("./routes/auth");
+
+// middlewares
+const { authMiddleware } = require("./middlewares/auth");
+
+const app: Application = express();
+const port = process.env.PORT;
+const localAddress = process.env.LOCAL_ADDRESS;
+
+// middlewares
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+app.use(cors());
+
+// routes - use
+app.use("/auth", authRoute);
+app.use("/api", authMiddleware, apiRoute);
+
+// listener
+app.listen(Number(port), String(localAddress), function () {
+  console.log("🚀 Server is running on port: " + port);
+});
+'@ | Set-Content -Path "./index.$templateExtension"
+}
+else {
+  @'
+require("dotenv").config();
+
+const express = require("express");
+const cors = require("cors");
+const path = require("node:path");
+
+// routes - import
+const apiRoute = require("./routes/api");
+const authRoute = require("./routes/auth");
+
+// middlewares
+const { authMiddleware } = require("./middlewares/auth");
+
+const app = express();
+const port = process.env.PORT;
+const localAddress = process.env.LOCAL_ADDRESS;
+
+// middlewares
+app.use(express.json());
+app.use(express.static("./public/"));
+app.use(cors());
+
+// routes - use
+app.use("/auth", authRoute);
+app.use("/api", authMiddleware, apiRoute);
+
+// listener
+app.listen(Number(port), String(localAddress), function () {
+  console.log("🚀 Server is running on port: " + port);
+});
+'@ | Set-Content -Path "./index.$templateExtension"
+}
+
 Write-Host "[+] File (index.$templateExtension) Created Successfully.`n"
 
 # Create .env file
 Write-Host "[*] Creating file => .env"
 New-Item -ItemType File -Name ".env" -Path "./" | Out-Null
 
+# Generate random JWT sign key
+$randomJWTString = $(Invoke-Expression -Command 'node -e "console.log(require(''crypto'').randomBytes(32).toString(''hex''))"').Trim()
+
 # contents
-@'
+@"
+
+# Epress variables
+LOCAL_ADDRESS=127.0.0.1
+PORT=8080
+
 # Nodemailer variables
 SMTP_HOST=your_smtp_host
 SMTP_PORT=your_smtp_port
@@ -604,8 +792,8 @@ DB_LOCAL_USER=your_db_username
 DB_LOCAL_PASSWORD=your_db_password
 
 # Other variables
-JWT_SIGN_KEY=$(Invoke-Expression -Command 'node -e "console.log(require(''crypto'').randomBytes(32).toString(''hex''))"').Trim()
-'@ | Set-Content -Path "./.env"
+JWT_SIGN_KEY=$randomJWTString
+"@ | Set-Content -Path "./.env"
 
 Write-Host "[+] File (.env) Created Successfully.`n"
 
@@ -615,6 +803,10 @@ New-Item -ItemType File -Name ".env-sample" -Path "./" | Out-Null
 
 # contents
 @'
+# Epress variables
+LOCAL_ADDRESS=your_express_host_address
+PORT=your_express_host_port
+
 # Nodemailer variables
 SMTP_HOST=your_smtp_host
 SMTP_PORT=your_smtp_port

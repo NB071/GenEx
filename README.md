@@ -5,7 +5,7 @@
 <p id="description">
 Are you tired of spending endless hours structuring your ExpressJS projects from scratch? Say goodbye to the hassle and welcome a game-changing solution! Introducing GenEx, a powerful and small PowerShell script designed to streamline your project setup process and elevate your development experience to new heights.
 
-With GenEx, you can bid farewell to the tedious manual creation of project structures. Inspired by the convenience of popular tools like CRA (create-react-app) and Vite, this innovative script empowers you to effortlessly generate an efficient folder structure for your small, medium, or even large-scale applications. It also provides you essential (listed below) including MySQL/Knex libray</p>
+With GenEx, you can bid farewell to the tedious manual creation of project structures. Inspired by the convenience of popular tools like CRA (create-react-app) and Vite, this innovative script empowers you to effortlessly generate an efficient folder structure for your small, medium, or even large-scale applications. It also provides you essential (listed below) including MySQL/Knex library</p>
 
 <h2>🏗️ Effortless Setup:</h2>
 

@@ -92,13 +92,12 @@ $ <script> [-d/-dir/-directory] <PROJECT'S_FOLDER_NAME> [-t/-temp/-template] <Ex
 $ ./genEx.ps1 -d example -t ts
 ```
 <p>TIP: the extension type is optional, and the default creates js files</p>
-<p>TIP: if you're in a rush, you can only run:</p>
+<p>TIP: if you're in a rush, you can run only:</p>
 
 ```
 $ <script> <PROJECT'S_FOLDER_NAME> <Extension type: js | ts>
 $ ./genEx.ps1 example ts
 ```
-<p>TIP: if you're in a rush, you can only run:</p>
 
 <h2>📑 What to do after ?</h2>
 <p>1. setup your db</p>
